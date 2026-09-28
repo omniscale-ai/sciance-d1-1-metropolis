@@ -1,0 +1,2586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Materials Intelligence Metropolis | SCIANCE D1.1</title>
+  <!-- MapLibre GL JS -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-space: #050811;
+      --bg-panel: rgba(10, 16, 32, 0.85);
+      --bg-panel-border: rgba(0, 240, 255, 0.25);
+      --accent-cyan: #00f0ff;
+      --accent-emerald: #00e599;
+      --accent-amber: #ffb700;
+      --accent-violet: #c040ff;
+      --accent-cobalt: #3a86ff;
+      --accent-red: #ff3366;
+      --priority-gold: #ffe9a8;
+      --text-main: #f0f4fc;
+      --text-muted: #8a9bb8;
+      --text-dim: #4d5d78;
+      --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg-space); font-family: var(--font-ui); color: var(--text-main); }
+    #map { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+
+    /* Vignette & Crystalline Atmosphere */
+    .viewport-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      box-shadow: inset 0 0 130px rgba(3, 6, 16, 0.9);
+      background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(2, 5, 15, 0.6) 100%);
+      z-index: 5;
+    }
+
+    /* TOP HUD BAR */
+    .hud-header {
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .hud-brand {
+      pointer-events: auto;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: 12px;
+      padding: 10px 18px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 240, 255, 0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .hud-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hud-logo-gem {
+      width: 12px;
+      height: 12px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-emerald));
+      transform: rotate(45deg);
+      box-shadow: 0 0 12px var(--accent-cyan);
+    }
+
+    .hud-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #ffffff, #c7ddff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hud-subtitle {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent-cyan);
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hud-tag {
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 9.5px;
+      color: var(--accent-cyan);
+    }
+
+    /* LAYER TOGGLE CONTROLS (HUD RIGHT) */
+    .hud-layers-panel {
+      pointer-events: auto;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      padding: 6px 12px;
+      display: flex;
+      gap: 6px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .layer-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .layer-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .layer-btn.active {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: var(--accent-cyan);
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.25);
+    }
+
+    .layer-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .layer-btn[data-layer="bottlenecks"].active {
+      border-color: var(--accent-red);
+      background: rgba(255, 51, 102, 0.14);
+      box-shadow: 0 0 14px rgba(255, 51, 102, 0.3);
+    }
+
+    .layer-btn[data-layer="challenges"].active {
+      border-color: var(--accent-amber);
+      background: rgba(255, 183, 0, 0.14);
+      box-shadow: 0 0 14px rgba(255, 183, 0, 0.3);
+    }
+
+    .layer-btn[data-layer="conduits"].active {
+      border-color: var(--accent-violet);
+      background: rgba(192, 64, 255, 0.14);
+      box-shadow: 0 0 14px rgba(192, 64, 255, 0.3);
+    }
+
+    /* LEFT COLLAPSIBLE SPIRE & HIGHWAY LEGEND */
+    .spire-legend-card {
+      position: absolute;
+      top: 90px;
+      left: 20px;
+      width: 330px;
+      max-height: calc(100vh - 120px);
+      background: var(--bg-panel);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: 14px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 240, 255, 0.08);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s;
+    }
+
+    .spire-legend-card.collapsed {
+      transform: translateX(-370px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .legend-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .legend-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .collapse-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      border-radius: 6px;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .collapse-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .legend-scroll {
+      padding: 12px;
+      overflow-y: auto;
+      max-height: calc(100vh - 190px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .legend-scroll::-webkit-scrollbar { width: 5px; }
+    .legend-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+
+    .district-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .district-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 6px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    .district-group-header:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .district-label-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .district-color-bar {
+      width: 4px;
+      height: 20px;
+      border-radius: 2px;
+    }
+
+    .district-group-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .district-group-scale {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      color: var(--text-muted);
+    }
+
+    .spire-item {
+      padding: 7px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+
+    .spire-item:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateX(3px);
+    }
+
+    .spire-item.active {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+
+    .spire-item-name {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .spire-item-code {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--accent-cyan);
+      background: rgba(0, 240, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+    }
+
+    /* RESTORE LEGEND BUTTON */
+    .restore-legend-btn {
+      position: absolute;
+      top: 90px;
+      left: 20px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--bg-panel-border);
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      z-index: 19;
+      transition: all 0.2s;
+    }
+
+    .restore-legend-btn:hover {
+      background: rgba(0, 240, 255, 0.15);
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+    }
+
+    .restore-legend-btn.visible {
+      display: flex;
+    }
+
+    /* RIGHT DETAIL DRAWER */
+    .detail-drawer {
+      position: absolute;
+      top: 90px;
+      right: 20px;
+      width: 400px;
+      max-height: calc(100vh - 120px);
+      background: var(--bg-panel);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: 14px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 240, 255, 0.12);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateX(440px);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s;
+    }
+
+    .detail-drawer.open {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      position: relative;
+    }
+
+    .drawer-badge-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .drawer-type-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-spire { background: rgba(0, 240, 255, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 240, 255, 0.3); }
+    .badge-bottleneck { background: rgba(255, 51, 102, 0.18); color: var(--accent-red); border: 1px solid rgba(255, 51, 102, 0.4); }
+    .badge-challenge { background: rgba(255, 183, 0, 0.18); color: var(--accent-amber); border: 1px solid rgba(255, 183, 0, 0.4); }
+    .badge-conduit { background: rgba(192, 64, 255, 0.18); color: var(--accent-violet); border: 1px solid rgba(192, 64, 255, 0.4); }
+
+    .drawer-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+
+    .drawer-close-btn:hover { color: #ffffff; }
+
+    .drawer-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+
+    .drawer-subtitle {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* PAGER CONTROLS IN DRAWER */
+    .drawer-pager-bar {
+      padding: 8px 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .pager-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pager-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--accent-cyan);
+    }
+
+    .pager-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .pager-chips-container {
+      display: flex;
+      gap: 4px;
+      max-width: 210px;
+      overflow-x: auto;
+      padding: 2px 0;
+    }
+
+    .pager-chips-container::-webkit-scrollbar { display: none; }
+
+    .pager-chip {
+      min-width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .pager-chip:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    .pager-chip.active {
+      background: var(--accent-cyan);
+      color: #060913;
+      font-weight: 700;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+    }
+
+    .drawer-content {
+      padding: 16px 18px;
+      overflow-y: auto;
+      max-height: calc(100vh - 290px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .drawer-content::-webkit-scrollbar { width: 5px; }
+    .drawer-content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+
+    /* METRICS TILES */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .metric-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .drawer-body-text {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #ccd7e8;
+    }
+
+    .drawer-section-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .remedy-box {
+      background: rgba(0, 229, 153, 0.08);
+      border-left: 3px solid var(--accent-emerald);
+      padding: 10px 12px;
+      border-radius: 0 8px 8px 0;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #bbf7d0;
+    }
+
+    .hazard-box {
+      background: rgba(255, 51, 102, 0.1);
+      border-left: 3px solid var(--accent-red);
+      padding: 10px 12px;
+      border-radius: 0 8px 8px 0;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #fecdd3;
+    }
+
+    /* INTER-SPIRE JUMP BUTTONS IN CONDUIT CARD */
+    .conduit-endpoints-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .conduit-endpoint-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      color: #ffffff;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+
+    .conduit-endpoint-btn:hover {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: var(--accent-cyan);
+      transform: translateX(3px);
+    }
+
+    /* BOTTOM CONTROLS & CAMERA ACTIONS */
+    .hud-footer {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .hud-controls-pill {
+      pointer-events: auto;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .control-action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .control-action-btn:hover {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: var(--accent-cyan);
+      color: #ffffff;
+    }
+
+    .control-action-btn.active {
+      background: var(--accent-cyan);
+      color: #060913;
+      font-weight: 700;
+    }
+
+    /* SCALE AXIS RUNWAY BAR */
+    .scale-axis-strip {
+      pointer-events: auto;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .scale-step-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: color 0.15s;
+    }
+
+    .scale-step-item:hover { color: #ffffff; }
+
+    .scale-step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* MAP MARKERS & STENCILS */
+    /* PUNCHY CODENAME MARKERS (NO MORE BLAND CODES!) */
+    .hazard-radar-marker {
+      pointer-events: auto;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 51, 102, 0.22);
+      border: 1px solid var(--accent-red);
+      padding: 4px 9px;
+      border-radius: 6px;
+      box-shadow: 0 0 16px rgba(255, 51, 102, 0.5);
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .hazard-radar-marker:hover {
+      transform: scale(1.12);
+      background: rgba(255, 51, 102, 0.4);
+      box-shadow: 0 0 24px rgba(255, 51, 102, 0.8);
+    }
+
+    .hazard-pulse-ring {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-red);
+      box-shadow: 0 0 10px var(--accent-red);
+      animation: radarPing 1.8s infinite;
+    }
+
+    @keyframes radarPing {
+      0% { transform: scale(0.8); opacity: 1; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    .hazard-radar-text {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .challenge-beacon-marker {
+      pointer-events: auto;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(40, 34, 14, 0.82);
+      border: 1px solid var(--priority-gold);
+      padding: 4px 9px;
+      border-radius: 6px;
+      box-shadow: 0 0 14px rgba(255, 233, 168, 0.35);
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .challenge-beacon-marker:hover {
+      transform: scale(1.12);
+      background: rgba(70, 60, 24, 0.92);
+      box-shadow: 0 0 22px rgba(255, 233, 168, 0.7);
+    }
+
+    .challenge-gem {
+      width: 7px;
+      height: 7px;
+      background: var(--priority-gold);
+      transform: rotate(45deg);
+      box-shadow: 0 0 10px var(--priority-gold);
+    }
+
+    .challenge-text {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    /* CLICKABLE CONDUIT FLOATING BADGES */
+    .conduit-beacon-marker {
+      pointer-events: auto;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(192, 64, 255, 0.25);
+      border: 1px solid var(--accent-violet);
+      padding: 3px 8px;
+      border-radius: 14px;
+      box-shadow: 0 0 14px rgba(192, 64, 255, 0.4);
+      transition: all 0.2s;
+    }
+
+    .conduit-beacon-marker:hover {
+      transform: scale(1.12);
+      background: rgba(192, 64, 255, 0.45);
+      box-shadow: 0 0 22px rgba(192, 64, 255, 0.7);
+    }
+
+    .conduit-beacon-text {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    /* ===== SCHEMA v2: CONSTRAINT PRIMITIVES ===== */
+    .layer-btn[data-layer="traffic"].active { border-color: rgba(255, 109, 0, 0.6); background: rgba(255, 109, 0, 0.12); }
+    .layer-btn[data-layer="queues"].active { border-color: rgba(255, 51, 102, 0.6); background: rgba(255, 51, 102, 0.12); }
+    .layer-btn[data-layer="weather"].active { border-color: rgba(160, 170, 200, 0.6); background: rgba(160, 170, 200, 0.12); }
+    .layer-btn.hidden-layer { display: none; }
+
+    /* Edge incident pin — like a crash / roadworks report on a road */
+    .incident-pin {
+      pointer-events: auto; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(20, 6, 10, 0.9);
+      border: 1px solid rgba(255, 23, 68, 0.75);
+      border-radius: 6px; padding: 3px 8px 3px 4px;
+      box-shadow: 0 0 14px rgba(255, 23, 68, 0.45);
+      font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; color: #fff;
+      transition: transform 0.2s ease;
+    }
+    .incident-pin:hover { transform: scale(1.08); }
+    .incident-icon {
+      width: 20px; height: 20px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      background: #ff1744; font-size: 11px;
+    }
+    .incident-pin.closure .incident-icon { background: #7a0019; }
+    .incident-pin.barrier { border-color: #8a93a6; background: rgba(28, 30, 38, 0.92); box-shadow: 0 0 10px rgba(138, 147, 166, 0.35); }
+    .incident-pin.barrier .incident-icon { background: #3a3f4d; }
+    .incident-pin.barrier .delay-chip { background: rgba(138, 147, 166, 0.25); color: #dfe3ec; }
+    .delay-chip {
+      font-size: 9.5px; font-weight: 700; color: #ffd0d8;
+      background: rgba(255, 23, 68, 0.25); border-radius: 3px; padding: 1px 5px;
+    }
+
+    /* Node wait-time chips — like "usually a 4 h wait" on a place */
+    .node-chip-stack { display: flex; flex-direction: column; gap: 3px; align-items: center; pointer-events: none; }
+    .node-chip {
+      pointer-events: auto; cursor: pointer;
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(30, 8, 14, 0.9);
+      border: 1px solid rgba(255, 109, 0, 0.7);
+      border-radius: 12px; padding: 2px 8px;
+      font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: #ffe0cc;
+      box-shadow: 0 0 10px rgba(255, 109, 0, 0.35);
+    }
+    .node-chip:hover { filter: brightness(1.3); }
+
+
+    /* Field forecast row — one chip per constraint acting on the district */
+    .forecast-row { display: flex; flex-wrap: wrap; gap: 4px; max-width: 360px; pointer-events: none; }
+    .forecast-chip {
+      pointer-events: auto; cursor: pointer;
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(12, 16, 28, 0.88);
+      border: 1px solid; border-radius: 12px; padding: 2px 8px 2px 4px;
+      font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: #e8ecf5;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .forecast-chip:hover { transform: scale(1.06); }
+    .forecast-chip.dim { opacity: 0.3; }
+    .forecast-chip.lit { box-shadow: 0 0 12px var(--tape, rgba(255,255,255,0.5)); }
+    .tape-swatch { width: 16px; height: 0; border-top: 3px solid var(--tape); display: inline-block; }
+    .tape-swatch.tape-noise { border-top-style: dotted; }
+    .tape-swatch.tape-slowdown { border-top-style: dashed; }
+
+    /* Conduit badge status variants */
+    .conduit-beacon-marker.status-thin { opacity: 0.8; border-style: dashed; }
+    .conduit-beacon-marker.status-planned { border-color: #8a93a6; background: rgba(40, 44, 56, 0.85); box-shadow: none; }
+    .conduit-beacon-marker .constrained-dot { width: 6px; height: 6px; border-radius: 50%; background: #ff1744; box-shadow: 0 0 6px #ff1744; }
+
+    /* Drawer: relations */
+    .relation-block { margin-top: 14px; }
+    .relation-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .ref-chip {
+      cursor: pointer; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+      padding: 4px 8px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.05); color: #fff;
+    }
+    .ref-chip:hover { background: rgba(255,255,255,0.14); }
+    .ref-chip.kind-bneck { border-color: rgba(255, 23, 68, 0.6); color: #ffb3c1; }
+    .ref-chip.kind-chal { border-color: rgba(255, 183, 0, 0.6); color: #ffe08a; }
+    .ref-chip.kind-conduit { border-color: rgba(192, 64, 255, 0.6); color: #e3b3ff; }
+    .ref-chip.kind-spire { border-color: rgba(0, 240, 255, 0.5); color: #b3fbff; }
+    .ref-chip.kind-dist { border-color: rgba(160, 170, 200, 0.5); color: #dfe6f5; }
+    .scope-banner {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      font-family: var(--font-mono); font-size: 11px; font-weight: 700; margin-bottom: 12px;
+    }
+    .scope-tag { padding: 3px 8px; border-radius: 4px; background: rgba(255, 23, 68, 0.18); color: #ffb3c1; border: 1px solid rgba(255, 23, 68, 0.4); }
+
+    /* Route (Directions) panel */
+    .route-panel {
+      position: absolute; bottom: 74px; left: 50%; transform: translateX(-50%);
+      width: min(560px, calc(100vw - 32px)); max-height: 46vh; overflow-y: auto;
+      background: var(--bg-panel); border: 1px solid var(--bg-panel-border);
+      border-radius: 12px; padding: 14px 16px; z-index: 20;
+      backdrop-filter: blur(12px); display: none;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    .route-panel.open { display: block; }
+    .route-form { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+    .route-form select {
+      width: 100%; background: rgba(0,0,0,0.35); color: #fff; border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px; padding: 6px; font-family: var(--font-mono); font-size: 11px;
+    }
+    .route-swap { cursor: pointer; background: none; border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; padding: 5px 8px; }
+    .route-option { display: block; margin-top: 8px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); cursor: pointer; }
+    .route-option input { vertical-align: middle; margin-right: 6px; }
+    .route-summary { margin-top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+    .route-legs { list-style: none; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .route-leg { font-family: var(--font-mono); font-size: 11px; color: #fff; display: flex; gap: 8px; align-items: baseline; }
+    .route-leg .leg-kind { color: var(--text-dim); min-width: 18px; }
+    .route-leg.against { color: #ffd08a; }
+    .route-incidents { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+    .route-incident { font-family: var(--font-mono); font-size: 11px; color: #ffb3c1; cursor: pointer; }
+    .route-incident.field { color: #dfe6f5; }
+    .route-incident.status { color: #ffd08a; }
+    .route-close { float: right; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="viewport-overlay"></div>
+
+  <!-- TOP HUD BAR -->
+  <header class="hud-header">
+    <div class="hud-brand">
+      <div class="hud-title-row">
+        <div class="hud-logo-gem"></div>
+        <h1 class="hud-title" id="hudTitle">Metropolis</h1>
+      </div>
+      <div class="hud-subtitle" id="hudSubtitle"></div>
+    </div>
+
+    <!-- LAYER VISIBILITY TOGGLES -->
+    <div class="hud-layers-panel">
+      <button class="layer-btn active" data-layer="districts" title="Toggle District Scale Zones">
+        <span class="layer-dot" style="color: var(--accent-cyan);"></span>
+        <span>Districts</span>
+      </button>
+      <button class="layer-btn active" data-layer="spires" title="Toggle AI Models & Facilities">
+        <span class="layer-dot" style="color: var(--accent-emerald);"></span>
+        <span>Spires</span>
+      </button>
+      <button class="layer-btn active" data-layer="conduits" title="Toggle highways, ferries and planned roads">
+        <span class="layer-dot" style="color: var(--accent-violet);"></span>
+        <span>Highways</span>
+      </button>
+      <button class="layer-btn active" data-layer="bottlenecks" title="Toggle Physical Rate-Limiters">
+        <span class="layer-dot" style="color: var(--accent-red);"></span>
+        <span>Bottlenecks</span>
+      </button>
+      <button class="layer-btn active hidden-layer" data-layer="traffic" title="Congestion and incidents on highways (edge constraints)">
+        <span class="layer-dot" style="color: #ff6d00;"></span>
+        <span>Traffic</span>
+      </button>
+      <button class="layer-btn active hidden-layer" data-layer="queues" title="Backlogs and wait times at spires (node constraints)">
+        <span class="layer-dot" style="color: var(--accent-red);"></span>
+        <span>Queues</span>
+      </button>
+      <button class="layer-btn active hidden-layer" data-layer="weather" title="Fog, noise and blind spots over districts (field constraints)">
+        <span class="layer-dot" style="color: #c8d0e0;"></span>
+        <span>Weather</span>
+      </button>
+      <button class="layer-btn active" data-layer="challenges" title="Toggle EU Mandates & Frontiers">
+        <span class="layer-dot" style="color: var(--accent-amber);"></span>
+        <span>Priorities</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- RESTORE LEGEND BUTTON -->
+  <button id="restoreLegendBtn" class="restore-legend-btn" title="Open Legend (Shortcut: L)">
+    <span>🧭 METROPOLIS INDEX ▶</span>
+  </button>
+
+  <!-- LEFT COLLAPSIBLE SPIRE & HIGHWAY LEGEND -->
+  <aside id="spireLegendCard" class="spire-legend-card">
+    <div class="legend-header">
+      <div class="legend-title">
+        <span>🏛️</span>
+        <span>METROPOLIS DIRECTORY</span>
+      </div>
+      <button id="collapseLegendBtn" class="collapse-btn" title="Collapse Legend (L)">◀</button>
+    </div>
+    <div class="legend-scroll" id="legendDistrictList">
+      <!-- Populated dynamically via JS -->
+    </div>
+  </aside>
+
+  <!-- RIGHT DETAIL DRAWER -->
+  <aside id="detailDrawer" class="detail-drawer">
+    <div class="drawer-header">
+      <div class="drawer-badge-row">
+        <span id="drawerTypeBadge" class="drawer-type-badge badge-spire">FOUNDATION SPIRE</span>
+        <button id="drawerCloseBtn" class="drawer-close-btn" title="Close (Esc)">✕</button>
+      </div>
+      <h2 id="drawerTitle" class="drawer-title">NOMAD CoE & Materials Cloud</h2>
+      <div id="drawerSubtitle" class="drawer-subtitle">QM-01 • ATOMISTIC MODELLING & QUANTUM SURROGATES</div>
+    </div>
+
+    <!-- PAGER CONTROLS -->
+    <div class="drawer-pager-bar">
+      <button id="pagerPrevBtn" class="pager-btn">◀ Prev</button>
+      <div id="pagerChipsContainer" class="pager-chips-container">
+        <!-- Numbered pill chips injected dynamically -->
+      </div>
+      <button id="pagerNextBtn" class="pager-btn">Next ▶</button>
+    </div>
+
+    <div class="drawer-content" id="drawerBody">
+      <!-- Populated dynamically -->
+    </div>
+  </aside>
+
+  <!-- BOTTOM HUD CONTROLS & SCALE RUNWAY -->
+  <footer class="hud-footer">
+    <div class="scale-axis-strip" id="scaleAxisStrip">
+      <span style="color: #ffffff; font-weight: 700; letter-spacing: 0.5px;">SCALE CORRIDOR:</span>
+      <!-- Injected from DISTRICTS -->
+    </div>
+
+    <div class="hud-controls-pill">
+      <button id="orbitBtn" class="control-action-btn">
+        <span>🔄</span>
+        <span>Auto-Orbit</span>
+      </button>
+      <button id="routeBtn" class="control-action-btn" title="Directions between two spires">
+        <span>🧭</span>
+        <span>Route</span>
+      </button>
+      <button id="resetCamBtn" class="control-action-btn">
+        <span>🎯</span>
+        <span>Overview</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- ROUTE (DIRECTIONS) PANEL -->
+  <section id="routePanel" class="route-panel">
+    <button class="route-close" id="routeCloseBtn" title="Close route">✕</button>
+    <div class="drawer-section-title"><span>🧭</span> Directions</div>
+    <div class="route-form">
+      <select id="routeFrom"></select>
+      <button class="route-swap" id="routeSwapBtn" title="Swap">⇄</button>
+      <select id="routeTo"></select>
+    </div>
+    <label class="route-option"><input type="checkbox" id="routeIncludePlanned"> include planned roads 🚧 (as if they were built)</label>
+    <div id="routeResult"></div>
+  </section>
+
+  <!-- LOAD COMPILED DATASET -->
+  <script src="city-data.js"></script>
+
+  <script>
+    // State management
+    let map = null;
+    let isOrbiting = false;
+    let orbitAnimationId = null;
+    let activeSelection = null; // { type: 'spire'|'bottleneck'|'challenge'|'conduit', id: string, index: number }
+    let layerVisibility = {
+      districts: true,
+      spires: true,
+      conduits: true,
+      bottlenecks: true,
+      challenges: true,
+      traffic: true,
+      queues: true,
+      weather: true
+    };
+
+    const districtMarkers = [];
+    // District names are painted on the ground as textures (canvas -> image source), so WebGL
+    // projects them with the same camera as the districts and they never drift off the edge.
+    const districtNames = [];            // { id, bbox: [minLng, minLat, maxLng, maxLat] }
+    const NAME_INSET_M = 20;             // from the district's west edge
+    const NAME_GAP_M = 16;               // below the district's south edge
+    const NAME_MAX_WIDTH = 0.92;         // share of the district width the name may use
+    const NAME_MAX_HEIGHT_M = 110;       // both lines together; the strip between districts is 240 m
+    let districtNameHover = false;
+
+    function drawSpacedText(g, text, x, y, spacing) {
+      for (const ch of text) {
+        g.fillText(ch, x, y);
+        x += g.measureText(ch).width + spacing;
+      }
+    }
+
+    function spacedWidth(g, text, spacing) {
+      let w = 0;
+      for (const ch of text) w += g.measureText(ch).width + spacing;
+      return w - spacing;
+    }
+
+    function drawDistrictName(d) {
+      const TITLE = '800 96px "JetBrains Mono", monospace', TAG = '600 68px "JetBrains Mono", monospace';
+      const title = d.name.toUpperCase(), tag = (d.scale_label || '').toUpperCase();
+      const pad = 60;
+      const probe = document.createElement('canvas').getContext('2d');
+      probe.font = TITLE; const titleW = spacedWidth(probe, title, 24);
+      probe.font = TAG; const tagW = spacedWidth(probe, tag, 12);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.min(4096, Math.ceil(Math.max(titleW, tagW) + 2 * pad));
+      canvas.height = Math.ceil(96 * 1.15 + 12 + 68 * 1.15 + 2 * pad);
+      const g = canvas.getContext('2d');
+      g.textBaseline = 'top';
+      g.fillStyle = d.color;
+      g.shadowColor = d.color;
+      g.font = TITLE;
+      g.globalAlpha = 0.85;
+      [70, 28].forEach(blur => { g.shadowBlur = blur; drawSpacedText(g, title, pad, pad, 24); });
+      g.font = TAG;
+      g.globalAlpha = 0.7;
+      g.shadowBlur = 16;
+      drawSpacedText(g, tag, pad, pad + 96 * 1.15 + 12, 12);
+      return canvas;
+    }
+
+    function addDistrictNames() {
+      window.DISTRICTS.forEach((d, i) => {
+        const canvas = drawDistrictName(d);
+        const lngs = d.bounds.map(p => p[0]);
+        const lats = d.bounds.map(p => p[1]);
+        const minLng = Math.min(...lngs), maxLng = Math.max(...lngs), minLat = Math.min(...lats);
+        const mPerDegLng = 111320 * Math.cos(d.center[1] * Math.PI / 180);
+        const widthM = (maxLng - minLng) * mPerDegLng;
+        const metresPerPx = Math.min((widthM - 2 * NAME_INSET_M) * NAME_MAX_WIDTH / canvas.width, NAME_MAX_HEIGHT_M / canvas.height);
+        const west = minLng + NAME_INSET_M / mPerDegLng;
+        const east = west + canvas.width * metresPerPx / mPerDegLng;
+        const north = minLat - NAME_GAP_M / 111320;
+        const south = north - canvas.height * metresPerPx / 111320;
+        const id = `district-name-${i}`;
+        map.addSource(id, { type: 'image', url: canvas.toDataURL('image/png'), coordinates: [[west, north], [east, north], [east, south], [west, south]] });
+        map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': 0.95, 'raster-fade-duration': 0 } }, 'fields-tape-blind');
+        districtNames.push({ id: d.id, layer: id, bbox: [west, south, east, north] });
+      });
+    }
+
+    function districtNameAt(lngLat) {
+      if (!layerVisibility.districts) return null;
+      return districtNames.find(n => lngLat.lng >= n.bbox[0] && lngLat.lng <= n.bbox[2] && lngLat.lat >= n.bbox[1] && lngLat.lat <= n.bbox[3]) || null;
+    }
+    const bottleneckMarkers = [];
+    const incidentMarkers = [];
+    const nodeMarkers = [];
+    const fieldMarkers = [];
+
+    // Schema v2: constraints drawn where they act (edge = traffic, node = queue, field = weather)
+    const BNECKS = window.BOTTLENECKS || [];
+    const SCOPED = BNECKS.filter(b => b.scope);
+    const TRAFFIC = window.TRAFFIC_GEOJSON || { type: 'FeatureCollection', features: [] };
+    const FIELDS = window.FIELDS_GEOJSON || { type: 'FeatureCollection', features: [] };
+    const EFFECT_ICON = { slowdown: '⚠️', closure: '⛔', noise: '🌫️', blind: '🌑' };
+    const EFFECT_WORD = { slowdown: 'SLOWDOWN', closure: 'CLOSURE', noise: 'NOISE', blind: 'BLIND SPOT' };
+    const SCOPE_WORD = { edge: 'ON A HIGHWAY', node: 'AT A SPIRE', field: 'OVER DISTRICTS' };
+    // Road types by conduit status: a highway, a ferry (weak or episodic flow), a road not built yet
+    const ROAD = {
+      operational: { word: 'HIGHWAY', icon: '⚡', title: 'Highway — established flow' },
+      thin: { word: 'FERRY', icon: '⛴️', title: 'Ferry — weak or episodic flow' },
+      planned: { word: 'PLANNED ROAD', icon: '🚧', title: 'Planned road — called for, not built yet' }
+    };
+    const roadOf = c => ROAD[c.status] || ROAD.operational;
+
+    function bneckIcon(b) {
+      if (!b.scope) return '⚠️';
+      if (b.scope === 'node') return b.effect === 'closure' ? '⛔' : '⏱️';
+      return EFFECT_ICON[b.effect] || '⚠️';
+    }
+    const challengeMarkers = [];
+    const conduitMarkers = [];
+
+    // Initialize MapLibre with Directional Sunlight & Depth
+    function initMap() {
+      map = new maplibregl.Map({
+        container: 'map',
+        style: {
+          version: 8,
+          sources: {},
+          layers: [{
+            id: 'background',
+            type: 'background',
+            paint: {
+              'background-color': '#060a14'
+            }
+          }]
+        },
+        center: window.CITY_CONFIG.center,
+        zoom: window.CITY_CONFIG.zoom,
+        pitch: window.CITY_CONFIG.pitch,
+        bearing: window.CITY_CONFIG.bearing,
+        antialias: true
+      });
+
+      map.on('load', () => {
+        // Configure MapLibre 3D Lighting
+        if (map.setLight) {
+          map.setLight({
+            anchor: 'viewport',
+            color: '#ffffff',
+            intensity: 0.65,
+            position: [1.3, 75, 45]
+          });
+        }
+
+        initHeader();
+        setupSourcesAndLayers();
+        renderGroundStencilsAndMarkers();
+        renderConstraintMarkers();
+        setupInteraction();
+        setupRoutePanel();
+        buildLegendUI();
+        buildScaleRunway();
+        startConstraintAnimations();
+      });
+    }
+
+    function setupSourcesAndLayers() {
+      // 1. Districts Runway Base
+      const districtPolygons = {
+        type: 'FeatureCollection',
+        features: window.DISTRICTS.map(d => ({
+          type: 'Feature',
+          properties: {
+            id: d.id,
+            name: d.name,
+            color: d.color,
+            scale_label: d.scale_label
+          },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [d.bounds]
+          }
+        }))
+      };
+
+      map.addSource('districts-geo', {
+        type: 'geojson',
+        data: districtPolygons
+      });
+
+      map.addLayer({
+        id: 'districts-fill',
+        type: 'fill',
+        source: 'districts-geo',
+        paint: {
+          'fill-color': ['get', 'color'],
+          'fill-opacity': 0.06
+        }
+      });
+
+      map.addLayer({
+        id: 'districts-line',
+        type: 'line',
+        source: 'districts-geo',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 1.5,
+          'line-dasharray': [4, 3],
+          'line-opacity': 0.7
+        }
+      });
+
+      // 1b. Field constraints: one coloured tape per constraint along the border of each district
+      // it covers. Colour = which problem, stroke = effect (solid blind · dotted noise · dashed slowdown).
+      addConstraintPatterns();
+      map.addSource('fields-geo', { type: 'geojson', data: FIELDS });
+      [['blind', null], ['noise', [0.1, 2]], ['slowdown', [4, 2]]].forEach(([effect, dash]) => {
+        const paint = { 'line-color': ['get', 'color'], 'line-width': 3, 'line-opacity': 0.85 };
+        if (dash) paint['line-dasharray'] = dash;
+        map.addLayer({
+          id: `fields-tape-${effect}`,
+          type: 'line',
+          source: 'fields-geo',
+          filter: ['==', ['get', 'effect'], effect],
+          layout: { 'line-cap': dash && dash[0] < 1 ? 'round' : 'butt' },
+          paint
+        });
+      });
+      map.addLayer({
+        id: 'fields-tape-hit',
+        type: 'line',
+        source: 'fields-geo',
+        paint: { 'line-color': '#000000', 'line-width': 16, 'line-opacity': 0.001 }
+      });
+
+      // 1c. Priorities: ground target (bullseye) with arcs of support (green) and blockage (red)
+      map.addSource('targets-geo', { type: 'geojson', data: window.TARGETS_GEOJSON || { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'targets-dot',
+        type: 'fill',
+        source: 'targets-geo',
+        filter: ['==', ['get', 'kind'], 'dot'],
+        paint: { 'fill-color': '#ffe9a8', 'fill-opacity': 0.9 }
+      });
+      map.addLayer({
+        id: 'targets-rings',
+        type: 'line',
+        source: 'targets-geo',
+        filter: ['==', ['get', 'kind'], 'ring'],
+        paint: { 'line-color': '#ffe9a8', 'line-width': 1.6, 'line-opacity': 0.75 }
+      });
+      map.addLayer({
+        id: 'targets-arcs',
+        type: 'line',
+        source: 'targets-geo',
+        filter: ['==', ['get', 'kind'], 'arc'],
+        layout: { 'line-cap': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.9 }
+      });
+      map.addLayer({
+        id: 'targets-arcs-hit',
+        type: 'line',
+        source: 'targets-geo',
+        filter: ['==', ['get', 'kind'], 'arc'],
+        paint: { 'line-color': '#000000', 'line-width': 14, 'line-opacity': 0.001 }
+      });
+
+      // District names painted on the ground (after the webfont is available)
+      const fontsReady = document.fonts && document.fonts.load
+        ? Promise.all([document.fonts.load('800 96px "JetBrains Mono"'), document.fonts.load('600 68px "JetBrains Mono"')]).catch(() => null)
+        : Promise.resolve();
+      fontsReady.then(addDistrictNames);
+
+      // 2. Highways (conduits)
+      map.addSource('conduits-geo', {
+        type: 'geojson',
+        data: window.CONDUITS_GEOJSON
+      });
+
+      // Wide invisible hit-area for easy clicking anywhere near the conduit
+      map.addLayer({
+        id: 'conduits-hitarea',
+        type: 'line',
+        source: 'conduits-geo',
+        paint: {
+          'line-color': '#000000',
+          'line-width': 22,
+          'line-opacity': 0.001
+        }
+      });
+
+      // Outer luminous halo
+      map.addLayer({
+        id: 'conduits-glow',
+        type: 'line',
+        source: 'conduits-geo',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 8,
+          'line-blur': 5,
+          'line-opacity': ['match', ['get', 'status'], 'planned', 0.12, 'thin', 0.3, 0.65]
+        }
+      });
+
+      // Inner core — one layer per status, since dash patterns cannot be data-driven:
+      // operational = solid road, thin = ferry line (sparse dots), planned = road under construction
+      map.addLayer({
+        id: 'conduits-core',
+        type: 'line',
+        source: 'conduits-geo',
+        filter: ['!', ['in', ['get', 'status'], ['literal', ['thin', 'planned']]]],
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 2.5,
+          'line-dasharray': [3, 2],
+          'line-opacity': 0.95
+        }
+      });
+      map.addLayer({
+        id: 'conduits-core-thin',
+        type: 'line',
+        source: 'conduits-geo',
+        filter: ['==', ['get', 'status'], 'thin'],
+        layout: { 'line-cap': 'round' },
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 2.5,
+          'line-dasharray': [0.1, 3.2],
+          'line-opacity': 0.9
+        }
+      });
+      map.addLayer({
+        id: 'conduits-core-planned',
+        type: 'line',
+        source: 'conduits-geo',
+        filter: ['==', ['get', 'status'], 'planned'],
+        paint: {
+          'line-color': '#8a93a6',
+          'line-width': 3,
+          'line-dasharray': [1.5, 1.5],
+          'line-opacity': 0.85
+        }
+      });
+
+      // One-way arrows along every road (flow direction from source to target)
+      map.addLayer({
+        id: 'conduits-arrows',
+        type: 'symbol',
+        source: 'conduits-geo',
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 110,
+          'icon-image': ['match', ['get', 'status'], 'planned', 'arrow-grey', 'arrow-light'],
+          'icon-size': 0.55,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'icon-rotation-alignment': 'map'
+        }
+      });
+
+      // 2b. Edge constraints: congestion approaching the incident, starved or closed road after it
+      map.addSource('traffic-geo', { type: 'geojson', data: TRAFFIC });
+      map.addLayer({
+        id: 'traffic-starved',
+        type: 'line',
+        source: 'traffic-geo',
+        filter: ['in', ['get', 'kind'], ['literal', ['starved', 'closed']]],
+        paint: { 'line-color': '#060a14', 'line-width': 10, 'line-opacity': 0.6 }
+      });
+      map.addLayer({
+        id: 'traffic-closed',
+        type: 'line',
+        source: 'traffic-geo',
+        filter: ['==', ['get', 'kind'], 'closed'],
+        paint: { 'line-color': '#ff1744', 'line-width': 2.5, 'line-dasharray': [0.8, 1.6], 'line-opacity': 0.9 }
+      });
+      map.addLayer({
+        id: 'traffic-queue',
+        type: 'line',
+        source: 'traffic-geo',
+        filter: ['==', ['get', 'kind'], 'queue'],
+        layout: { 'line-cap': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'width'], 'line-blur': 1, 'line-opacity': 0.95 }
+      });
+      map.addLayer({
+        id: 'traffic-queue-crawl',
+        type: 'line',
+        source: 'traffic-geo',
+        filter: ['==', ['get', 'kind'], 'queue'],
+        paint: { 'line-color': '#1a0006', 'line-width': 2, 'line-dasharray': [0, 4, 3], 'line-opacity': 0.8 }
+      });
+
+      // Relation links (on selection) and route overlay
+      map.addSource('links-geo', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'relation-links',
+        type: 'line',
+        source: 'links-geo',
+        paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.9 }
+      });
+      map.addSource('route-geo', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'route-casing',
+        type: 'line',
+        source: 'route-geo',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#7cffb2', 'line-width': 14, 'line-blur': 6, 'line-opacity': 0.35 }
+      });
+      map.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route-geo',
+        filter: ['!=', ['get', 'kind'], 'walk'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['match', ['get', 'kind'], 'against', '#ffd08a', '#7cffb2'], 'line-width': 5 }
+      });
+      map.addLayer({
+        id: 'route-walk',
+        type: 'line',
+        source: 'route-geo',
+        filter: ['==', ['get', 'kind'], 'walk'],
+        paint: { 'line-color': '#7cffb2', 'line-width': 3, 'line-dasharray': [0.5, 1.5] }
+      });
+
+      // 3. 3D Buildings & Crystals (Spires + Hazard Radars + Priority Monoliths)
+      map.addSource('buildings-geo', {
+        type: 'geojson',
+        data: window.BUILDINGS_GEOJSON
+      });
+
+      map.addLayer({
+        id: 'buildings-3d',
+        type: 'fill-extrusion',
+        source: 'buildings-geo',
+        paint: {
+          'fill-extrusion-color': [
+            'case',
+            ['has', 'color'], ['get', 'color'],
+            '#00f0ff'
+          ],
+          'fill-extrusion-height': ['get', 'height'],
+          'fill-extrusion-base': ['get', 'base_height'],
+          'fill-extrusion-opacity': 0.92,
+          'fill-extrusion-vertical-gradient': true
+        }
+      });
+
+      // 4. Wireframe Outlines on Building Facets for Crystalline Aesthetics
+      if (window.WIREFRAME_GEOJSON) {
+        map.addSource('wireframe-geo', {
+          type: 'geojson',
+          data: window.WIREFRAME_GEOJSON
+        });
+
+        map.addLayer({
+          id: 'buildings-wireframe',
+          type: 'line',
+          source: 'wireframe-geo',
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': 1.5,
+            'line-opacity': 0.75
+          }
+        });
+      }
+    }
+
+    // Ground Runways, Beacons, and Punchy Codename Markers
+    function renderGroundStencilsAndMarkers() {
+      // 2. Bottleneck Hazard Radars (WITH PUNCHY 1-2 WORD CODENAMES!)
+      window.BOTTLENECKS.forEach((b, idx) => {
+        if (b.scope) return; // schema v2 constraints are rendered by renderConstraintMarkers()
+        const hazardEl = document.createElement('div');
+        hazardEl.className = 'hazard-radar-marker';
+        hazardEl.innerHTML = `
+          <div class="hazard-pulse-ring"></div>
+          <div class="hazard-radar-text">⚠️ ${b.codename}</div>
+        `;
+        hazardEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectObject('bottleneck', b.id, idx);
+        });
+
+        const marker = new maplibregl.Marker({
+          element: hazardEl,
+          pitchAlignment: 'viewport'
+        }).setLngLat(b.coordinates).addTo(map);
+
+        bottleneckMarkers.push(marker);
+      });
+
+      // 3. Strategic Priorities & Challenges (WITH PUNCHY 1-2 WORD CODENAMES!)
+      window.CHALLENGES.forEach((c, idx) => {
+        const chalEl = document.createElement('div');
+        chalEl.className = 'challenge-beacon-marker';
+        chalEl.innerHTML = `
+          <div class="challenge-gem"></div>
+          <div class="challenge-text">🎯 ${c.codename}</div>
+        `;
+        chalEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectObject('challenge', c.id, idx);
+        });
+
+        const marker = new maplibregl.Marker({
+          element: chalEl,
+          anchor: 'left',
+          offset: [22, 0],
+          pitchAlignment: 'viewport'
+        }).setLngLat(c.coordinates).addTo(map);
+
+        challengeMarkers.push(marker);
+      });
+
+      // 4. Clickable road badges (highway / ferry / planned road)
+      window.CONDUITS.forEach((cond, idx) => {
+        if (!cond.midpoint) return;
+        const conduitEl = document.createElement('div');
+        conduitEl.className = `conduit-beacon-marker status-${cond.status || 'operational'}`;
+        conduitEl.title = `${roadOf(cond).title}: ${cond.name}`;
+        conduitEl.innerHTML = `
+          <span style="font-size: 11px;">${roadOf(cond).icon}</span>
+          <span class="conduit-beacon-text">${cond.codename}</span>
+          ${(cond.constrained_by || []).length ? '<span class="constrained-dot" title="Constrained"></span>' : ''}
+        `;
+        conduitEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectObject('conduit', cond.id, idx);
+        });
+
+        const marker = new maplibregl.Marker({
+          element: conduitEl,
+          pitchAlignment: 'viewport'
+        }).setLngLat(cond.midpoint).addTo(map);
+
+        conduitMarkers.push(marker);
+      });
+    }
+
+    // Interaction Setup
+    function setupInteraction() {
+      // Click on ANY 3D Building (Spire, Bottleneck Tower, Priority Monolith)
+      map.on('click', 'buildings-3d', (e) => {
+        if (!e.features || !e.features.length) return;
+        const feat = e.features[0];
+        const props = feat.properties;
+
+        if (props.spire_ref) {
+          const sIdx = window.SPIRES_INDEX.findIndex(s => s.id === props.spire_ref);
+          if (sIdx !== -1) selectObject('spire', props.spire_ref, sIdx);
+        } else if (props.bottleneck_ref) {
+          const bIdx = BNECKS.findIndex(b => b.id === props.bottleneck_ref);
+          if (bIdx !== -1) selectObject('bottleneck', props.bottleneck_ref, bIdx);
+        } else if (props.challenge_ref) {
+          const cIdx = window.CHALLENGES.findIndex(c => c.id === props.challenge_ref);
+          if (cIdx !== -1) selectObject('challenge', props.challenge_ref, cIdx);
+        }
+      });
+
+      map.on('mouseenter', 'buildings-3d', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'buildings-3d', () => { map.getCanvas().style.cursor = ''; });
+
+      // Click on Conduit Line or Conduit Hit-Area
+      const onConduitClick = (e) => {
+        if (!e.features || !e.features.length) return;
+        const feat = e.features[0];
+        const condId = feat.properties.id;
+        const cIdx = window.CONDUITS.findIndex(c => c.id === condId);
+        if (cIdx !== -1) {
+          selectObject('conduit', condId, cIdx);
+        }
+      };
+
+      map.on('click', 'conduits-core', onConduitClick);
+      map.on('click', 'targets-arcs-hit', (e) => {
+        const ref = e.features && e.features[0] && e.features[0].properties.ref;
+        if (ref) gotoRef(ref);
+      });
+      map.on('mouseenter', 'targets-arcs-hit', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'targets-arcs-hit', () => { map.getCanvas().style.cursor = ''; });
+      map.on('click', 'fields-tape-hit', (e) => {
+        const ref = e.features && e.features[0] && e.features[0].properties.bottleneck_ref;
+        if (ref) gotoRef(ref);
+      });
+      map.on('mouseenter', 'fields-tape-hit', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'fields-tape-hit', () => { map.getCanvas().style.cursor = ''; });
+      map.on('click', 'traffic-queue', (e) => {
+        const ref = e.features && e.features[0] && e.features[0].properties.bottleneck_ref;
+        if (ref) gotoRef(ref);
+      });
+
+      const interactiveLayers = ['buildings-3d', 'conduits-hitarea', 'fields-tape-hit', 'targets-arcs-hit', 'traffic-queue'];
+      const nothingElseAt = (point) => !map.queryRenderedFeatures(point, { layers: interactiveLayers.filter(l => map.getLayer(l)) }).length;
+      map.on('click', (e) => {
+        const name = districtNameAt(e.lngLat);
+        if (name && nothingElseAt(e.point)) flyToDistrict(name.id);
+      });
+      map.on('mousemove', (e) => {
+        const over = !!districtNameAt(e.lngLat) && nothingElseAt(e.point);
+        if (over) { map.getCanvas().style.cursor = 'pointer'; districtNameHover = true; }
+        else if (districtNameHover) { map.getCanvas().style.cursor = ''; districtNameHover = false; }
+      });
+
+      // Relation chips anywhere (drawer, route panel) jump to the referenced entity
+      document.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-ref]');
+        if (chip) { e.stopPropagation(); gotoRef(chip.dataset.ref); }
+      });
+      map.on('click', 'conduits-hitarea', onConduitClick);
+      map.on('mouseenter', 'conduits-hitarea', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'conduits-hitarea', () => { map.getCanvas().style.cursor = ''; });
+
+      // Layer Toggles
+      document.querySelectorAll('.layer-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const layerKey = btn.dataset.layer;
+          layerVisibility[layerKey] = !layerVisibility[layerKey];
+          btn.classList.toggle('active', layerVisibility[layerKey]);
+          applyLayerVisibility(layerKey);
+        });
+      });
+
+      // Auto-Orbit Button
+      const orbitBtn = document.getElementById('orbitBtn');
+      orbitBtn.addEventListener('click', toggleOrbit);
+
+      // Reset Camera Overview
+      document.getElementById('resetCamBtn').addEventListener('click', () => {
+        stopOrbit();
+        map.flyTo({
+          center: window.CITY_CONFIG.center,
+          zoom: window.CITY_CONFIG.zoom,
+          pitch: window.CITY_CONFIG.pitch,
+          bearing: window.CITY_CONFIG.bearing,
+          duration: 1600
+        });
+      });
+
+      // Legend Collapse / Restore
+      const legendCard = document.getElementById('spireLegendCard');
+      const collapseBtn = document.getElementById('collapseLegendBtn');
+      const restoreBtn = document.getElementById('restoreLegendBtn');
+
+      collapseBtn.addEventListener('click', () => {
+        legendCard.classList.add('collapsed');
+        restoreBtn.classList.add('visible');
+      });
+
+      restoreBtn.addEventListener('click', () => {
+        legendCard.classList.remove('collapsed');
+        restoreBtn.classList.remove('visible');
+      });
+
+      // Drawer Pager Buttons
+      document.getElementById('pagerPrevBtn').addEventListener('click', navigatePrev);
+      document.getElementById('pagerNextBtn').addEventListener('click', navigateNext);
+      document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
+
+      // Keyboard Shortcuts
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeDrawer();
+        if (e.key === 'ArrowLeft') navigatePrev();
+        if (e.key === 'ArrowRight') navigateNext();
+        if (e.key === 'l' || e.key === 'L') {
+          if (legendCard.classList.contains('collapsed')) {
+            legendCard.classList.remove('collapsed');
+            restoreBtn.classList.remove('visible');
+          } else {
+            legendCard.classList.add('collapsed');
+            restoreBtn.classList.add('visible');
+          }
+        }
+      });
+    }
+
+    function setLayers(ids, visible) {
+      ids.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none'); });
+    }
+
+    function setMarkers(list, visible) {
+      list.forEach(m => m.getElement().style.display = visible ? 'flex' : 'none');
+    }
+
+    // One combined filter, so toggling one entity type never re-shows another
+    function refreshBuildingFilter() {
+      const hidden = [];
+      if (!layerVisibility.spires) hidden.push('spire');
+      if (!layerVisibility.bottlenecks) hidden.push('bottleneck');
+      if (!layerVisibility.challenges) hidden.push('challenge');
+      if (!layerVisibility.queues) hidden.push('queue');
+      map.setFilter('buildings-3d', hidden.length ? ['!', ['in', ['get', 'entity_type'], ['literal', hidden]]] : null);
+    }
+
+    function applyLayerVisibility(layerKey) {
+      const isVisible = layerVisibility[layerKey];
+      if (layerKey === 'districts') {
+        setLayers(['districts-fill', 'districts-line', ...districtNames.map(n => n.layer)], isVisible);
+        setMarkers(districtMarkers, isVisible);
+      } else if (layerKey === 'spires') {
+        setLayers(['buildings-wireframe'], isVisible);
+      } else if (layerKey === 'conduits') {
+        setLayers(['conduits-glow', 'conduits-core', 'conduits-core-thin', 'conduits-core-planned', 'conduits-arrows'], isVisible);
+        setMarkers(conduitMarkers, isVisible);
+      } else if (layerKey === 'bottlenecks') {
+        setMarkers(bottleneckMarkers, isVisible);
+      } else if (layerKey === 'challenges') {
+        setMarkers(challengeMarkers, isVisible);
+        setLayers(['targets-dot', 'targets-rings', 'targets-arcs', 'targets-arcs-hit'], isVisible);
+      } else if (layerKey === 'traffic') {
+        setLayers(['traffic-starved', 'traffic-closed', 'traffic-queue', 'traffic-queue-crawl'], isVisible);
+        setMarkers(incidentMarkers, isVisible);
+      } else if (layerKey === 'queues') {
+        setMarkers(nodeMarkers, isVisible);
+      } else if (layerKey === 'weather') {
+        setLayers(['fields-tape-blind', 'fields-tape-noise', 'fields-tape-slowdown', 'fields-tape-hit'], isVisible);
+        setMarkers(fieldMarkers, isVisible);
+      }
+      refreshBuildingFilter();
+    }
+
+    // Selection & Drawer Rendering
+    function selectObject(type, id, index) {
+      activeSelection = { type, id, index };
+      const selected = type === 'bottleneck' ? BNECKS[index] : null;
+      highlightField(selected && selected.scope === 'field' ? id : null);
+      const drawer = document.getElementById('detailDrawer');
+      const badge = document.getElementById('drawerTypeBadge');
+      const title = document.getElementById('drawerTitle');
+      const subtitle = document.getElementById('drawerSubtitle');
+      const body = document.getElementById('drawerBody');
+
+      // Update Legend Selection
+      document.querySelectorAll('.spire-item, .conduit-legend-item').forEach(el => el.classList.remove('active'));
+      const activeLegendItem = document.querySelector(`[data-id="${id}"]`);
+      if (activeLegendItem) activeLegendItem.classList.add('active');
+
+      if (type === 'spire') {
+        const item = window.SPIRES_INDEX[index];
+        badge.className = 'drawer-type-badge badge-spire';
+        badge.textContent = `SPIRE • ${item.code} (${item.codename})`;
+        title.textContent = item.title;
+        subtitle.textContent = `${item.district_name} (${item.scale_label})`;
+
+        body.innerHTML = `
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">Physical Scale</span>
+              <span class="metric-value" style="color: ${item.color};">${item.metrics.scale || 'N/A'}</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Acceleration Factor</span>
+              <span class="metric-value" style="color: var(--accent-emerald);">${item.metrics.acceleration || 'N/A'}</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">European Infrastructure</span>
+              <span class="metric-value">${item.metrics.infrastructure || 'N/A'}</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Maturity Level</span>
+              <span class="metric-value" style="color: var(--accent-amber);">${item.metrics.maturity || 'N/A'}</span>
+            </div>
+          </div>
+          <div>
+            <div class="drawer-section-title"><span>✦</span> Scientific Abstract & Methodology</div>
+            <p class="drawer-body-text">${item.abstract}</p>
+          </div>
+          ${relationBlock('⏱️ Constraints at this spire', item.constraints)}
+          ${relationBlock('🎯 Advances priorities', item.advances)}
+          <div class="relation-block conduit-endpoints-row">
+            <button class="conduit-endpoint-btn" id="routeFromHereBtn"><span>🧭 ROUTE FROM HERE</span><span>➔</span></button>
+            <button class="conduit-endpoint-btn" id="routeToHereBtn"><span>🧭 ROUTE TO HERE</span><span>➔</span></button>
+          </div>
+        `;
+        document.getElementById('routeFromHereBtn').addEventListener('click', () => openRoute(item.id, null));
+        document.getElementById('routeToHereBtn').addEventListener('click', () => openRoute(null, item.id));
+
+        showLinks(item.coordinates, [
+          ...(item.advances || []).map(ref => ({ ref, color: '#ffe9a8' }))
+        ]);
+        updatePager(window.SPIRES_INDEX.length, index);
+        flyToObject(item.coordinates);
+      } else if (type === 'bottleneck') {
+        const item = BNECKS[index];
+        badge.className = 'drawer-type-badge badge-bottleneck';
+        badge.textContent = item.scope
+          ? `CONSTRAINT • ${item.scope.toUpperCase()} • ${item.code}`
+          : `RATE-LIMITER • ${item.code} [${item.codename}]`;
+        title.textContent = `${item.codename}: ${item.title}`;
+        subtitle.textContent = item.nature;
+        const blocksPriorities = window.CHALLENGES.filter(c => (c.blocked_by || []).includes(item.id)).map(c => c.id);
+
+        body.innerHTML = `
+          ${item.scope ? `
+          <div class="scope-banner">
+            <span class="scope-tag">${bneckIcon(item)} ${EFFECT_WORD[item.effect] || ''} ${SCOPE_WORD[item.scope]}</span>
+            ${(item.anchors || []).some(a => a.barrier) ? '<span class="scope-tag">⛔ BLOCKS A PLANNED ROAD</span>' : ''}
+            ${item.color ? `<span class="scope-tag" style="background: rgba(255,255,255,0.05); color: #fff; border-color: ${item.color};"><span class="tape-swatch tape-${item.effect}" style="--tape: ${item.color};"></span> BORDER TAPE</span>` : ''}
+            <span class="scope-tag" style="background: rgba(255,255,255,0.06); color: #fff; border-color: rgba(255,255,255,0.2);">SEVERITY ${Math.round(item.severity * 100)}%</span>
+            ${item.delay_label ? `<span class="delay-chip">${item.delay_label}</span>` : ''}
+          </div>` : ''}
+          <div class="hazard-box">
+            <strong>Critical Impact:</strong> ${item.impact}
+          </div>
+          ${relationBlock('📍 Acts on', item.constrains)}
+          <div>
+            <div class="drawer-section-title" style="color: var(--accent-emerald);"><span>🛡️</span> Strategic European Remedy</div>
+            <div class="remedy-box">${item.remedy}</div>
+          </div>
+          ${relationBlock('🩹 Remedied by', item.remedied_by)}
+          ${relationBlock('🎯 Holds back priorities', blocksPriorities)}
+        `;
+
+        showLinks(item.coordinates, [
+          ...(item.anchors || []).slice(1).map(a => ({ coords: a.coordinates, color: '#ff1744' })),
+          ...(item.remedied_by || []).map(ref => ({ ref, color: '#00e599' })),
+          ...blocksPriorities.map(ref => ({ ref, color: '#ffe9a8' }))
+        ]);
+
+        updatePager(BNECKS.length, index);
+        flyToObject(item.coordinates);
+      } else if (type === 'challenge') {
+        const item = window.CHALLENGES[index];
+        badge.className = 'drawer-type-badge badge-challenge';
+        badge.textContent = `MANDATE • ${item.code} [${item.codename}]`;
+        title.textContent = `${item.codename}: ${item.title}`;
+        subtitle.textContent = item.type;
+
+        body.innerHTML = `
+          <div class="metric-card" style="border-left: 3px solid var(--accent-amber);">
+            <span class="metric-label">Strategic Policy Target</span>
+            <span class="metric-value" style="font-size: 13.5px; line-height: 1.5; color: #fff;">${item.target}</span>
+          </div>
+          ${relationBlock('🏛️ Advanced by', item.advanced_by)}
+          ${relationBlock('⚠️ Blocked by', item.blocked_by)}
+        `;
+
+        showLinks(item.coordinates, [
+          ...(item.advanced_by || []).map(ref => ({ ref, color: '#ffe9a8' })),
+          ...(item.blocked_by || []).map(ref => ({ ref, color: '#ff1744' }))
+        ]);
+
+        updatePager(window.CHALLENGES.length, index);
+        flyToObject(item.coordinates);
+      } else if (type === 'conduit') {
+        const item = window.CONDUITS[index];
+        badge.className = 'drawer-type-badge badge-conduit';
+        badge.textContent = `${roadOf(item).word} • ${item.code} [${item.codename}]`;
+        title.textContent = `${item.codename}: ${item.name}`;
+        subtitle.textContent = `${item.from_name} ➔ ${item.to_name}`;
+
+        body.innerHTML = `
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">Pipeline Type</span>
+              <span class="metric-value" style="color: var(--accent-violet);">${item.type}</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Bandwidth / Stream</span>
+              <span class="metric-value">${item.bandwidth}</span>
+            </div>
+            ${item.status ? `
+            <div class="metric-card">
+              <span class="metric-label">Road Status</span>
+              <span class="metric-value" style="color: ${item.status === 'planned' ? '#8a93a6' : item.status === 'thin' ? '#ffd08a' : 'var(--accent-emerald)'};">${roadOf(item).icon} ${roadOf(item).title}</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Direction</span>
+              <span class="metric-value">${item.direction === 'south' ? '↓ Southbound (feedback)' : item.direction === 'north' ? '↑ Northbound' : '↔ Within district'}</span>
+            </div>` : ''}
+          </div>
+          ${relationBlock(item.status === 'planned' ? '⛔ Not built because of' : '⚠️ Constrained by', item.constrained_by)}
+          ${relationBlock('🩹 Remedy for', item.remedies)}
+          <div>
+            <div class="drawer-section-title"><span>✦</span> Inter-Scale Scientific Flow</div>
+            <p class="drawer-body-text">${item.description}</p>
+          </div>
+          <div class="conduit-endpoints-row">
+            <div class="drawer-section-title"><span>🏛️</span> Connected Spires</div>
+            <button class="conduit-endpoint-btn" id="conduitFromBtn">
+              <span>SOURCE: ${item.from_name}</span>
+              <span>Fly ➔</span>
+            </button>
+            <button class="conduit-endpoint-btn" id="conduitToBtn">
+              <span>TARGET: ${item.to_name}</span>
+              <span>Fly ➔</span>
+            </button>
+          </div>
+        `;
+
+        // Wire jump buttons
+        setTimeout(() => {
+          const fromBtn = document.getElementById('conduitFromBtn');
+          const toBtn = document.getElementById('conduitToBtn');
+          if (fromBtn) {
+            fromBtn.addEventListener('click', () => {
+              const sIdx = window.SPIRES_INDEX.findIndex(s => s.id === item.from);
+              if (sIdx !== -1) selectObject('spire', item.from, sIdx);
+            });
+          }
+          if (toBtn) {
+            toBtn.addEventListener('click', () => {
+              const sIdx = window.SPIRES_INDEX.findIndex(s => s.id === item.to);
+              if (sIdx !== -1) selectObject('spire', item.to, sIdx);
+            });
+          }
+        }, 50);
+
+        showLinks(item.midpoint, (item.remedies || []).map(ref => ({ ref, color: '#00e599' })));
+        updatePager(window.CONDUITS.length, index);
+        if (item.midpoint) {
+          flyToConduit(item.midpoint);
+        }
+      }
+
+      drawer.classList.add('open');
+    }
+
+    function flyToObject(coords) {
+      stopOrbit();
+      map.flyTo({
+        center: [coords[0], coords[1] - 0.0016],
+        zoom: 16.15,
+        pitch: 62,
+        bearing: -22,
+        duration: 1400
+      });
+    }
+
+    function flyToConduit(midpoint) {
+      stopOrbit();
+      map.flyTo({
+        center: [midpoint[0], midpoint[1] - 0.0022],
+        zoom: 15.6,
+        pitch: 58,
+        bearing: -18,
+        duration: 1500
+      });
+    }
+
+    function flyToDistrict(districtId) {
+      const d = window.DISTRICTS.find(x => x.id === districtId);
+      if (!d) return;
+      stopOrbit();
+      map.flyTo({
+        center: [d.center[0], d.center[1] - 0.0028],
+        zoom: 15.2,
+        pitch: 56,
+        bearing: -16,
+        duration: 1600
+      });
+    }
+
+    function updatePager(total, current) {
+      const prevBtn = document.getElementById('pagerPrevBtn');
+      const nextBtn = document.getElementById('pagerNextBtn');
+      const chips = document.getElementById('pagerChipsContainer');
+
+      prevBtn.disabled = current <= 0;
+      nextBtn.disabled = current >= total - 1;
+
+      chips.innerHTML = '';
+      for (let i = 0; i < total; i++) {
+        const chip = document.createElement('div');
+        chip.className = `pager-chip ${i === current ? 'active' : ''}`;
+        chip.textContent = (i + 1);
+        chip.addEventListener('click', () => {
+          if (activeSelection) {
+            const list = getActiveList(activeSelection.type);
+            selectObject(activeSelection.type, list[i].id, i);
+          }
+        });
+        chips.appendChild(chip);
+      }
+
+      const activeChip = chips.children[current];
+      if (activeChip) activeChip.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+    }
+
+    function navigatePrev() {
+      if (!activeSelection || activeSelection.index <= 0) return;
+      const newIdx = activeSelection.index - 1;
+      const list = getActiveList(activeSelection.type);
+      selectObject(activeSelection.type, list[newIdx].id, newIdx);
+    }
+
+    function navigateNext() {
+      if (!activeSelection) return;
+      const list = getActiveList(activeSelection.type);
+      if (activeSelection.index >= list.length - 1) return;
+      const newIdx = activeSelection.index + 1;
+      selectObject(activeSelection.type, list[newIdx].id, newIdx);
+    }
+
+    function getActiveList(type) {
+      if (type === 'spire') return window.SPIRES_INDEX;
+      if (type === 'bottleneck') return BNECKS;
+      if (type === 'challenge') return window.CHALLENGES;
+      if (type === 'conduit') return window.CONDUITS;
+      return [];
+    }
+
+    function closeDrawer() {
+      document.getElementById('detailDrawer').classList.remove('open');
+      document.querySelectorAll('.spire-item, .conduit-legend-item').forEach(el => el.classList.remove('active'));
+      activeSelection = null;
+      showLinks(null, []);
+      highlightField(null);
+    }
+
+    // Legend Builder (districts & spires, highways, constraints, priorities)
+    function buildLegendUI() {
+      const container = document.getElementById('legendDistrictList');
+      container.innerHTML = '';
+
+      // 1. Scale Districts & Spires
+      window.DISTRICTS.forEach(d => {
+        const group = document.createElement('div');
+        group.className = 'district-group';
+
+        const header = document.createElement('div');
+        header.className = 'district-group-header';
+        header.innerHTML = `
+          <div class="district-label-box">
+            <div class="district-color-bar" style="background: ${d.color}; box-shadow: 0 0 8px ${d.color};"></div>
+            <div>
+              <div class="district-group-name">${d.name}</div>
+              <div class="district-group-scale">${d.scale_label}</div>
+            </div>
+          </div>
+          <span style="font-size: 10px; color: var(--text-dim);">▶</span>
+        `;
+        header.addEventListener('click', () => flyToDistrict(d.id));
+
+        group.appendChild(header);
+
+        const districtSpires = window.SPIRES_INDEX.filter(s => s.district_ref === d.id);
+        districtSpires.forEach(s => {
+          const item = document.createElement('div');
+          item.className = 'spire-item';
+          item.dataset.id = s.id;
+          item.innerHTML = `
+            <span class="spire-item-name">${s.title}</span>
+            <span class="spire-item-code">${s.codename || s.code}</span>
+          `;
+          item.addEventListener('click', () => {
+            const sIdx = window.SPIRES_INDEX.findIndex(x => x.id === s.id);
+            selectObject('spire', s.id, sIdx);
+          });
+          group.appendChild(item);
+        });
+
+        container.appendChild(group);
+      });
+
+      // 2. Highways Directory Section
+      const conduitGroup = document.createElement('div');
+      conduitGroup.className = 'district-group';
+      conduitGroup.style.borderTop = '1px solid rgba(255, 255, 255, 0.1)';
+      conduitGroup.style.paddingTop = '10px';
+
+      const conduitHeader = document.createElement('div');
+      conduitHeader.className = 'district-group-header';
+      conduitHeader.innerHTML = `
+        <div class="district-label-box">
+          <span style="font-size: 14px;">⚡</span>
+          <div>
+            <div class="district-group-name" style="color: var(--accent-violet);">HIGHWAYS (${window.CONDUITS.length})</div>
+            <div class="district-group-scale">Highways · Ferries · Planned roads</div>
+          </div>
+        </div>
+      `;
+      conduitGroup.appendChild(conduitHeader);
+
+      const roadOrder = ['operational', 'thin', 'planned'];
+      const byRoad = roadOrder.map(st => window.CONDUITS.map((c, idx) => ({ c, idx })).filter(({ c }) => (c.status || 'operational') === st));
+      const showSubheads = byRoad.filter(list => list.length).length > 1;
+      byRoad.forEach((list, r) => {
+        if (!list.length) return;
+        if (showSubheads) {
+          const sub = document.createElement('div');
+          sub.className = 'district-group-scale';
+          sub.style.margin = '6px 0 2px 4px';
+          sub.textContent = `${ROAD[roadOrder[r]].icon} ${ROAD[roadOrder[r]].word}S (${list.length})`.replace('FERRYS', 'FERRIES');
+          conduitGroup.appendChild(sub);
+        }
+        list.forEach(({ c: cond, idx }) => {
+        const cItem = document.createElement('div');
+        cItem.className = 'spire-item conduit-legend-item';
+        cItem.dataset.id = cond.id;
+        cItem.innerHTML = `
+          <span class="spire-item-name">${roadOf(cond).icon} ${cond.codename}</span>
+          <span class="spire-item-code" style="color: var(--accent-violet); border-color: rgba(192, 64, 255, 0.3);">${cond.code}</span>
+        `;
+        cItem.addEventListener('click', () => {
+          selectObject('conduit', cond.id, idx);
+        });
+        conduitGroup.appendChild(cItem);
+        });
+      });
+
+      container.appendChild(conduitGroup);
+
+      // 3. Constraints and priorities (towers are gone for scoped constraints, so the index matters)
+      const addSection = (heading, sub, color, items, type) => {
+        if (!items.length) return;
+        const group = document.createElement('div');
+        group.className = 'district-group';
+        group.style.borderTop = '1px solid rgba(255, 255, 255, 0.1)';
+        group.style.paddingTop = '10px';
+        group.innerHTML = `
+          <div class="district-group-header">
+            <div class="district-label-box">
+              <div>
+                <div class="district-group-name" style="color: ${color};">${heading} (${items.length})</div>
+                <div class="district-group-scale">${sub}</div>
+              </div>
+            </div>
+          </div>`;
+        items.forEach((it, idx) => {
+          const row = document.createElement('div');
+          row.className = 'spire-item conduit-legend-item';
+          row.dataset.id = it.id;
+          if (it.color) row.style.borderLeft = `3px solid ${it.color}`;
+          row.innerHTML = `
+            <span class="spire-item-name">${type === 'bottleneck' ? bneckIcon(it) : '🎯'} ${it.codename}</span>
+            <span class="spire-item-code" style="color: ${color}; border-color: ${color}55;">${type === 'bottleneck' && it.scope ? it.scope.toUpperCase() : it.code}</span>`;
+          row.addEventListener('click', () => selectObject(type, it.id, idx));
+          group.appendChild(row);
+        });
+        container.appendChild(group);
+      };
+      addSection('⚠️ CONSTRAINTS', 'Traffic · Queues · Weather', 'var(--accent-red)', BNECKS, 'bottleneck');
+      addSection('🎯 PRIORITIES', 'Research challenges & recommendations', 'var(--accent-amber)', window.CHALLENGES, 'challenge');
+    }
+
+    // Scale Runway Builder
+    function buildScaleRunway() {
+      const strip = document.getElementById('scaleAxisStrip');
+      window.DISTRICTS.forEach(d => {
+        const item = document.createElement('div');
+        item.className = 'scale-step-item';
+        item.innerHTML = `
+          <span class="scale-step-dot" style="background: ${d.color}; box-shadow: 0 0 8px ${d.color};"></span>
+          <span>${d.scale_label}</span>
+        `;
+        item.addEventListener('click', () => flyToDistrict(d.id));
+        strip.appendChild(item);
+      });
+    }
+
+    // Auto-Orbit
+    function toggleOrbit() {
+      if (isOrbiting) {
+        stopOrbit();
+      } else {
+        startOrbit();
+      }
+    }
+
+    function startOrbit() {
+      isOrbiting = true;
+      document.getElementById('orbitBtn').classList.add('active');
+      function rotateCamera() {
+        if (!isOrbiting) return;
+        map.setBearing((map.getBearing() + 0.18) % 360);
+        orbitAnimationId = requestAnimationFrame(rotateCamera);
+      }
+      rotateCamera();
+    }
+
+    function stopOrbit() {
+      if (!isOrbiting) return;
+      isOrbiting = false;
+      document.getElementById('orbitBtn').classList.remove('active');
+      if (orbitAnimationId) cancelAnimationFrame(orbitAnimationId);
+    }
+
+    // ===== Header from compiled metadata =====
+    function initHeader() {
+      const cfg = window.CITY_CONFIG || {};
+      document.getElementById('hudTitle').textContent = cfg.title || 'Metropolis';
+      document.title = cfg.title || document.title;
+      const sub = document.getElementById('hudSubtitle');
+      sub.innerHTML = '';
+      [cfg.subtitle, cfg.scale_axis_label].filter(Boolean).forEach((t, i) => {
+        const span = document.createElement('span');
+        if (i > 0) span.className = 'hud-tag';
+        span.textContent = t;
+        sub.appendChild(span);
+      });
+    }
+
+    // ===== Canvas-generated icons and fill patterns =====
+    function canvasImage(w, h, paint) {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const g = c.getContext('2d');
+      paint(g, w, h);
+      return g.getImageData(0, 0, w, h);
+    }
+
+    function addConstraintPatterns() {
+      const arrow = color => canvasImage(32, 32, (g) => {
+        g.strokeStyle = color; g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round';
+        g.beginPath(); g.moveTo(10, 7); g.lineTo(22, 16); g.lineTo(10, 25); g.stroke();
+      });
+      map.addImage('arrow-light', arrow('rgba(255,255,255,0.95)'));
+      map.addImage('arrow-grey', arrow('rgba(150,158,176,0.9)'));
+    }
+
+    function startConstraintAnimations() {
+      // Stop-and-go dashes crawling along congested segments
+      const dashSeq = [[0, 4, 3], [0.5, 4, 2.5], [1, 4, 2], [1.5, 4, 1.5], [2, 4, 1], [2.5, 4, 0.5], [3, 4, 0],
+        [0, 0.5, 3, 3.5], [0, 1, 3, 3], [0, 1.5, 3, 2.5], [0, 2, 3, 2], [0, 2.5, 3, 1.5], [0, 3, 3, 1], [0, 3.5, 3, 0.5]];
+      let step = 0;
+      if (TRAFFIC.features.length) {
+        setInterval(() => {
+          if (document.hidden || !layerVisibility.traffic) return;
+          step = (step + 1) % dashSeq.length;
+          map.setPaintProperty('traffic-queue-crawl', 'line-dasharray', dashSeq[step]);
+        }, 90);
+      }
+    }
+
+    // ===== Constraint markers (schema v2) =====
+    function renderConstraintMarkers() {
+      const nodeGroups = {};
+      SCOPED.forEach(b => {
+        const idx = BNECKS.indexOf(b);
+        (b.anchors || []).forEach((a, aIdx) => {
+          if (a.kind === 'edge') {
+            const el = document.createElement('div');
+            if (a.barrier) {
+              // A planned road: the constraint is the barrier that keeps it from being built
+              el.className = 'incident-pin barrier';
+              el.title = `${b.title} — why this road is not built`;
+              el.innerHTML = `<span class="incident-icon">⛔</span><span>${b.codename}</span><span class="delay-chip">blocks construction</span>`;
+            } else {
+              el.className = `incident-pin ${b.effect === 'closure' ? 'closure' : ''}`;
+              el.title = `${b.title} — ${EFFECT_WORD[b.effect]}`;
+              el.innerHTML = `<span class="incident-icon">${EFFECT_ICON[b.effect] || '⚠️'}</span><span>${b.codename}</span>${
+                b.delay_label ? `<span class="delay-chip">${b.delay_label}</span>` : ''}`;
+            }
+            el.addEventListener('click', (e) => { e.stopPropagation(); selectObject('bottleneck', b.id, idx); });
+            incidentMarkers.push(new maplibregl.Marker({ element: el, pitchAlignment: 'viewport' }).setLngLat(a.coordinates).addTo(map));
+          } else if (a.kind === 'node') {
+            (nodeGroups[a.ref] = nodeGroups[a.ref] || { coords: a.coordinates, items: [] }).items.push({ b, idx });
+          }
+        });
+      });
+      // Forecast row: one clickable chip per field constraint acting on the district
+      window.DISTRICTS.forEach(d => {
+        if (!d.fields || !d.fields.length) return;
+        const row = document.createElement('div');
+        row.className = 'forecast-row';
+        d.fields.forEach(ref => {
+          const idx = BNECKS.findIndex(x => x.id === ref);
+          const b = BNECKS[idx];
+          const chip = document.createElement('div');
+          chip.className = 'forecast-chip';
+          chip.dataset.bneck = b.id;
+          chip.style.borderColor = b.color;
+          chip.style.setProperty('--tape', b.color);
+          chip.title = `${b.title} — ${EFFECT_WORD[b.effect]} over ${b.constrains.length} district(s)`;
+          chip.innerHTML = `<span class="tape-swatch tape-${b.effect}" style="--tape: ${b.color};"></span><span>${EFFECT_ICON[b.effect]}</span><span>${b.codename}</span>`;
+          chip.addEventListener('click', (e) => { e.stopPropagation(); selectObject('bottleneck', b.id, idx); });
+          row.appendChild(chip);
+        });
+        fieldMarkers.push(new maplibregl.Marker({ element: row, anchor: 'top-left', pitchAlignment: 'viewport' })
+          .setLngLat(d.forecast_anchor).addTo(map));
+      });
+
+      // Wait-time chips stacked under each constrained spire
+      Object.values(nodeGroups).forEach(group => {
+        const stack = document.createElement('div');
+        stack.className = 'node-chip-stack';
+        group.items.forEach(({ b, idx }) => {
+          const chip = document.createElement('div');
+          chip.className = 'node-chip';
+          chip.title = b.title;
+          chip.innerHTML = `<span>${bneckIcon(b)}</span><span>${b.codename}</span>${b.delay_label ? `<span class="delay-chip">${b.delay_label}</span>` : ''}`;
+          chip.addEventListener('click', (e) => { e.stopPropagation(); selectObject('bottleneck', b.id, idx); });
+          stack.appendChild(chip);
+        });
+        nodeMarkers.push(new maplibregl.Marker({ element: stack, anchor: 'top', offset: [0, 14], pitchAlignment: 'viewport' })
+          .setLngLat(group.coords).addTo(map));
+      });
+
+      // Layer buttons: only offer what the dataset contains
+      const has = {
+        traffic: SCOPED.some(b => b.scope === 'edge'),
+        queues: SCOPED.some(b => b.scope === 'node'),
+        weather: SCOPED.some(b => b.scope === 'field'),
+        bottlenecks: BNECKS.some(b => !b.scope)
+      };
+      Object.entries(has).forEach(([key, present]) => {
+        const btn = document.querySelector(`.layer-btn[data-layer="${key}"]`);
+        if (btn) btn.classList.toggle('hidden-layer', !present);
+      });
+    }
+
+    // ===== References between entities =====
+    function refEntity(ref) {
+      if (!ref) return null;
+      if (ref.startsWith('@spire-')) { const i = window.SPIRES_INDEX.findIndex(x => x.id === ref); return i < 0 ? null : { kind: 'spire', i, item: window.SPIRES_INDEX[i] }; }
+      if (ref.startsWith('@conduit-')) { const i = window.CONDUITS.findIndex(x => x.id === ref); return i < 0 ? null : { kind: 'conduit', i, item: window.CONDUITS[i] }; }
+      if (ref.startsWith('@bneck-')) { const i = BNECKS.findIndex(x => x.id === ref); return i < 0 ? null : { kind: 'bottleneck', i, item: BNECKS[i] }; }
+      if (ref.startsWith('@chal-')) { const i = window.CHALLENGES.findIndex(x => x.id === ref); return i < 0 ? null : { kind: 'challenge', i, item: window.CHALLENGES[i] }; }
+      if (ref.startsWith('@dist-')) { const d = window.DISTRICTS.find(x => x.id === ref); return d ? { kind: 'district', item: d } : null; }
+      return null;
+    }
+
+    function refLabel(ref) {
+      const e = refEntity(ref);
+      if (!e) return ref;
+      if (e.kind === 'district') return e.item.name;
+      if (e.kind === 'bottleneck') return `${bneckIcon(e.item)} ${e.item.codename}`;
+      if (e.kind === 'challenge') return `🎯 ${e.item.codename}`;
+      if (e.kind === 'conduit') return `${roadOf(e.item).icon} ${e.item.codename}`;
+      return e.item.codename || e.item.title;
+    }
+
+    function refLocation(ref) {
+      const e = refEntity(ref);
+      if (!e) return null;
+      if (e.kind === 'conduit') return e.item.midpoint;
+      if (e.kind === 'district') return e.item.center;
+      return e.item.coordinates;
+    }
+
+    function gotoRef(ref) {
+      const e = refEntity(ref);
+      if (!e) return;
+      if (e.kind === 'district') flyToDistrict(ref);
+      else selectObject(e.kind, ref, e.i);
+    }
+
+    function relationBlock(heading, refs) {
+      if (!refs || !refs.length) return '';
+      const kindClass = r => r.startsWith('@bneck-') ? 'kind-bneck' : r.startsWith('@chal-') ? 'kind-chal'
+        : r.startsWith('@conduit-') ? 'kind-conduit' : r.startsWith('@spire-') ? 'kind-spire' : 'kind-dist';
+      return `<div class="relation-block">
+        <div class="drawer-section-title"><span></span>${heading}</div>
+        <div class="relation-list">${refs.map(r => `<span class="ref-chip ${kindClass(r)}" data-ref="${r}">${refLabel(r)}</span>`).join('')}</div>
+      </div>`;
+    }
+
+    // Spotlight one field constraint: its tapes and chips stay bright, the rest fade back
+    function highlightField(id) {
+      if (!map || !map.getLayer('fields-tape-blind')) return;
+      const match = ['==', ['get', 'bottleneck_ref'], id || ''];
+      ['blind', 'noise', 'slowdown'].forEach(effect => {
+        map.setPaintProperty(`fields-tape-${effect}`, 'line-opacity', id ? ['case', match, 1, 0.15] : 0.85);
+        map.setPaintProperty(`fields-tape-${effect}`, 'line-width', id ? ['case', match, 5, 2] : 3);
+      });
+      document.querySelectorAll('.forecast-chip').forEach(chip => {
+        chip.classList.toggle('dim', !!id && chip.dataset.bneck !== id);
+        chip.classList.toggle('lit', !!id && chip.dataset.bneck === id);
+      });
+    }
+
+    function showLinks(origin, targets) {
+      const src = map && map.getSource('links-geo');
+      if (!src) return;
+      const features = [];
+      if (origin) {
+        targets.forEach(t => {
+          const to = t.coords || refLocation(t.ref);
+          if (to) features.push({ type: 'Feature', properties: { color: t.color }, geometry: { type: 'LineString', coordinates: [origin, to] } });
+        });
+      }
+      src.setData({ type: 'FeatureCollection', features });
+    }
+
+    // ===== Directions: shortest path over highways and ferries (+ walking inside a district) =====
+    function setupRoutePanel() {
+      const from = document.getElementById('routeFrom');
+      const to = document.getElementById('routeTo');
+      const byDistrict = window.DISTRICTS.map(d => ({ d, spires: window.SPIRES_INDEX.filter(s => s.district_ref === d.id) }));
+      [from, to].forEach(sel => {
+        sel.innerHTML = byDistrict.map(({ d, spires }) =>
+          `<optgroup label="${d.name}">${spires.map(sp => `<option value="${sp.id}">${sp.codename} — ${sp.title}</option>`).join('')}</optgroup>`).join('');
+      });
+      const first = byDistrict.find(g => g.spires.length);
+      const last = [...byDistrict].reverse().find(g => g.spires.length);
+      if (first) from.value = first.spires[0].id;
+      if (last) to.value = last.spires[last.spires.length - 1].id;
+      from.addEventListener('change', renderRoute);
+      document.getElementById('routeIncludePlanned').addEventListener('change', renderRoute);
+      to.addEventListener('change', renderRoute);
+      document.getElementById('routeSwapBtn').addEventListener('click', () => { const v = from.value; from.value = to.value; to.value = v; renderRoute(); });
+      document.getElementById('routeBtn').addEventListener('click', () => {
+        const panel = document.getElementById('routePanel');
+        if (panel.classList.contains('open')) closeRoute(); else openRoute(null, null);
+      });
+      document.getElementById('routeCloseBtn').addEventListener('click', closeRoute);
+    }
+
+    function openRoute(fromId, toId) {
+      if (fromId) document.getElementById('routeFrom').value = fromId;
+      if (toId) document.getElementById('routeTo').value = toId;
+      document.getElementById('routePanel').classList.add('open');
+      document.getElementById('routeBtn').classList.add('active');
+      closeDrawer();
+      renderRoute();
+    }
+
+    function closeRoute() {
+      document.getElementById('routePanel').classList.remove('open');
+      document.getElementById('routeBtn').classList.remove('active');
+      map.getSource('route-geo').setData({ type: 'FeatureCollection', features: [] });
+    }
+
+    function computeRoute(fromId, toId, includePlanned) {
+      // Planned roads do not exist yet, so by default the router will not drive on them
+      const edges = (window.ROUTE_GRAPH || []).filter(e => includePlanned || !e.planned);
+      const dist = { [fromId]: 0 };
+      const prev = {};
+      const done = new Set();
+      while (true) {
+        let u = null;
+        for (const k in dist) if (!done.has(k) && (u === null || dist[k] < dist[u])) u = k;
+        if (u === null) return null;
+        if (u === toId) break;
+        done.add(u);
+        edges.filter(e => e.from === u).forEach(e => {
+          const nd = dist[u] + e.cost;
+          if (dist[e.to] === undefined || nd < dist[e.to]) { dist[e.to] = nd; prev[e.to] = e; }
+        });
+      }
+      const legs = [];
+      for (let v = toId; v !== fromId; v = prev[v].from) legs.unshift(prev[v]);
+      return { legs, cost: dist[toId] };
+    }
+
+    function renderRoute() {
+      const fromId = document.getElementById('routeFrom').value;
+      const toId = document.getElementById('routeTo').value;
+      const out = document.getElementById('routeResult');
+      const src = map.getSource('route-geo');
+      if (fromId === toId) { out.innerHTML = '<div class="route-summary">Pick two different spires.</div>'; src.setData({ type: 'FeatureCollection', features: [] }); return; }
+      const includePlanned = document.getElementById('routeIncludePlanned').checked;
+      const route = computeRoute(fromId, toId, includePlanned);
+      if (!route) { out.innerHTML = '<div class="route-summary">No connection between these spires — the city has no road here.</div>'; src.setData({ type: 'FeatureCollection', features: [] }); return; }
+
+      const spire = id => window.SPIRES_INDEX.find(x => x.id === id);
+      const features = [];
+      const incidents = [];
+      const seen = new Set();
+      const note = (key, html) => { if (!seen.has(key)) { seen.add(key); incidents.push(html); } };
+      const visited = [fromId, ...route.legs.map(l => l.to)];
+
+      const legsHtml = route.legs.map(leg => {
+        if (leg.kind === 'walk') {
+          features.push({ type: 'Feature', properties: { kind: 'walk' }, geometry: { type: 'LineString', coordinates: [spire(leg.from).coordinates, spire(leg.to).coordinates] } });
+          return `<li class="route-leg"><span class="leg-kind">🚶</span><span>${spire(leg.from).codename} → ${spire(leg.to).codename} <span style="color: var(--text-dim);">(same district)</span></span></li>`;
+        }
+        const cond = window.CONDUITS.find(c => c.id === leg.conduit);
+        const geom = window.CONDUITS_GEOJSON.features.find(f => f.properties.id === leg.conduit).geometry.coordinates;
+        features.push({ type: 'Feature', properties: { kind: leg.against_flow ? 'against' : 'conduit' }, geometry: { type: 'LineString', coordinates: leg.against_flow ? [...geom].reverse() : geom } });
+        (cond.status === 'planned' ? [] : (cond.constrained_by || [])).forEach(ref => {
+          const b = refEntity(ref).item;
+          note(ref, `<div class="route-incident" data-ref="${ref}">${bneckIcon(b)} ${b.codename} on ${cond.codename}${b.delay_label ? ` — ${b.delay_label}` : ''}</div>`);
+        });
+        if (cond.status === 'planned') note('st-' + cond.id, `<div class="route-incident status" data-ref="${cond.id}">🚧 ${cond.codename} is only planned — this road does not exist yet</div>`);
+        if (cond.status === 'thin') note('st-' + cond.id, `<div class="route-incident status" data-ref="${cond.id}">⛴️ ${cond.codename} is a ferry — weak or episodic flow, expect waiting</div>`);
+        return `<li class="route-leg ${leg.against_flow ? 'against' : ''}"><span class="leg-kind">${leg.against_flow ? '↺' : roadOf(cond).icon}</span><span>${cond.codename}: ${spire(leg.from).codename} → ${spire(leg.to).codename}${leg.against_flow ? ' <em>(against the flow)</em>' : ''}</span></li>`;
+      }).join('');
+
+      visited.forEach(id => (spire(id).constraints || []).forEach(ref => {
+        const b = refEntity(ref).item;
+        note(ref, `<div class="route-incident" data-ref="${ref}">${bneckIcon(b)} ${b.codename} at ${spire(id).codename}${b.delay_label ? ` — ${b.delay_label}` : ''}</div>`);
+      }));
+      const districtsOnRoute = new Set(visited.map(id => spire(id).district_ref));
+      SCOPED.filter(b => b.scope === 'field' && b.constrains.some(d => districtsOnRoute.has(d))).forEach(b => {
+        note(b.id, `<div class="route-incident field" data-ref="${b.id}">${bneckIcon(b)} route passes through ${b.codename}</div>`);
+      });
+
+      const conduitLegs = route.legs.filter(l => l.kind === 'conduit').length;
+      out.innerHTML = `
+        <div class="route-summary">${conduitLegs} road leg${conduitLegs === 1 ? '' : 's'} · ${route.legs.length - conduitLegs} walk · ${incidents.length} incident${incidents.length === 1 ? '' : 's'} on the way</div>
+        <ul class="route-legs">${legsHtml}</ul>
+        ${incidents.length ? `<div class="route-incidents">${incidents.join('')}</div>` : ''}`;
+      src.setData({ type: 'FeatureCollection', features });
+
+      const all = features.flatMap(f => f.geometry.coordinates);
+      const lngs = all.map(c => c[0]), lats = all.map(c => c[1]);
+      stopOrbit();
+      map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+        { padding: { top: 90, bottom: 300, left: 370, right: 60 }, pitch: 25, bearing: -16, duration: 1400 });
+    }
+
+    // Launch Map
+    window.addEventListener('DOMContentLoaded', initMap);
+  </script>
+</body>
+</html>
